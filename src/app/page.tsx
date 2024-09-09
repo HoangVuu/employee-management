@@ -1,101 +1,112 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import EmployeeCard from "@/lib/components/employee-card";
+import { Employee, Position } from "@/lib/types/employee";
+import { useCallback, useEffect, useRef, useState } from "react";
+import employeeList from "@/lib/mocks/employee-list.json";
+
+const Home: React.FC = () => {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [pageNumber, setPageNumber] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
+  const [isInitialRender, setIsInitialRender] = useState(true);
+
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
+  const DEFAULT_OFFSET = 9;
+  const calculateExperience = (positions: Position[]) => {
+    let totalExperience = 0;
+
+    positions.forEach((position) => {
+      position.toolLanguages.forEach((language) => {
+        totalExperience += language.to - language.from;
+      });
+    });
+
+    return totalExperience;
+  };
+
+  useEffect(() => {
+    // Map totalExperience after calculation
+    const employeesWithExperience = employeeList.map((employee) => ({
+      ...employee,
+      totalExp: calculateExperience(employee.positions),
+    }));
+
+    // Sort employees by total years of experience in descending order
+    const sortedEmployees = employeesWithExperience.sort(
+      (a, b) => b.totalExp - a.totalExp
+    );
+
+    // Filter employees
+    const filterdEmployee = sortedEmployees.filter((e) =>
+      e.name.toLowerCase().includes(searchInput)
+    );
+
+    setEmployees(filterdEmployee.slice(0, DEFAULT_OFFSET * (1 + pageNumber)));
+  }, [searchInput, pageNumber]);
+
+  const handleDelete = (id: number) => {
+    setEmployees((prev) => prev.filter((employee) => employee.id !== id));
+  };
+
+  const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchInput(e.target.value);
+  };
+
+  const lastEmployeeRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (observerRef.current) observerRef.current.disconnect();
+
+      observerRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && !isInitialRender) {
+          setPageNumber((prevPageNumber) => prevPageNumber + 1);
+        }
+      });
+
+      if (node) observerRef.current.observe(node);
+      setIsInitialRender(false);
+    },
+    [isInitialRender]
+  );
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">Employee List</h1>
+      <form className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by name"
+          value={searchInput}
+          onChange={onInputChange}
+          className="border border-gray-300 p-2 rounded-lg w-full md:w-1/3 pl-2"
         />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+      </form>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      {/* Render employee list */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {employees?.length ? (
+          employees?.map((employee, index) => {
+            console.log('employees', employees.length);
+            console.log('index', index +1);
+
+              return (
+                <EmployeeCard
+                  key={employee.id}
+                  employee={employee}
+                  lastEmployeeRef={employees.length === index + 1 ? lastEmployeeRef : null}
+                  onDelete={handleDelete}
+                />
+              );
+          })
+        ) : (
+          <p>
+            No result founds with: <b>{searchInput}</b>
+          </p>
+        )}
+      </div>
     </div>
   );
-}
+};
+
+export default Home;
